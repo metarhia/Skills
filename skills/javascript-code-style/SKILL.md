@@ -53,6 +53,7 @@ Also follow this skill conventions when you writing js/ts code. Key conventions:
 ## Optimizations
 
 Optimize code for V8:
+
 - Preserve object shape (all keys and value types including key order) to force V8 use monomorphic code optimizations
   - We can change object shape just in constructors and creational GoF patterns
   - Avoid mix-ins and `delete` operator
