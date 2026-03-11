@@ -33,7 +33,7 @@
   },
   "homepage": "https://github.com/metarhia/Skills",
   "bin": {
-    "metarhia-skills": "scripts/link-ide.js"
+    "skills": "scripts/link-ide.js"
   },
   "files": [
     "skills",
@@ -42,11 +42,7 @@
   "scripts": {
     "lint": "eslint . && prettier -c \"**/*.js\" \"**/*.json\" \"**/*.md\"",
     "fix": "eslint . --fix && prettier --write \"**/*.js\" \"**/*.json\" \"**/*.md\"",
-    "link:cursor": "node scripts/link-ide.js cursor",
-    "link:claude": "node scripts/link-ide.js claude",
-    "link:windsurf": "node scripts/link-ide.js windsurf",
-    "link:github": "node scripts/link-ide.js github",
-    "link:all": "node scripts/link-ide.js all"
+    "test": "npm run lint && node --test tests/link-ide.test.js"
   },
   "engines": {
     "node": ">=18"

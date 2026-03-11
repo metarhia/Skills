@@ -15,20 +15,22 @@ npm install metarhia-skills --save-dev
 From your project root, link skills into your IDE so it can use them:
 
 ```bash
-npx metarhia-skills cursor
+npx skills cursor
 ```
+
+Run `npx skills` without an IDE to show an interactive menu.
 
 This creates symlinks under `.cursor/skills` and `.agents/skills` pointing at `node_modules/metarhia-skills/skills`, so the IDE loads the skills without copying files.
 
 **Supported IDEs:**
 
-| IDE      | Command                        | Target dirs                        |
-| -------- | ------------------------------ | ---------------------------------- |
-| Cursor   | `npx metarhia-skills cursor`   | `.cursor/skills`, `.agents/skills` |
-| Claude   | `npx metarhia-skills claude`   | `.claude/skills`                   |
-| Windsurf | `npx metarhia-skills windsurf` | `.windsurf/skills`                 |
-| GitHub   | `npx metarhia-skills github`   | `.github/skills`                   |
-| All      | `npx metarhia-skills all`      | All of the above                   |
+| IDE      | Command               | Target dirs                        |
+| -------- | --------------------- | ---------------------------------- |
+| Cursor   | `npx skills cursor`   | `.cursor/skills`, `.agents/skills` |
+| Claude   | `npx skills claude`   | `.claude/skills`                   |
+| Windsurf | `npx skills windsurf` | `.windsurf/skills`                 |
+| GitHub   | `npx skills github`   | `.github/skills`                   |
+| All      | `npx skills all`      | All of the above                   |
 
 Run once after install (or after updating the package). Existing symlinks are left as-is; only missing skill links are added.
 
@@ -45,23 +47,23 @@ See the [skills](skills/) directory for the full list.
 
 ## Development
 
-Clone the repo and link skills into this repo for local testing:
+Clone the repo and link skills for local testing:
 
 ```bash
 git clone https://github.com/metarhia/Skills.git
 cd Skills
 npm install
-npm run link:cursor   # or link:claude, link:windsurf, link:github, link:all
+npx skills   # interactive menu, or npx skills cursor, etc.
 ```
 
 Scripts:
 
 - `npm run lint` — check code style
 - `npm run fix` — auto-fix with ESLint and Prettier
-- `npm run link:<ide>` — same as `npx metarhia-skills <ide>` when run from repo root
+- `npm t` — run tests
 
 ## License & Contributors
 
 Copyright (c) 2026 [Metarhia contributors](https://github.com/metarhia/Skills/graphs/contributors).
-Metarhia Skills is [MIT licensed](./LICENSE).\
+Metarhia Skills is [MIT licensed](./LICENSE).
 Metarhia Skills is a part of [Metarhia](https://github.com/metarhia) technology stack.

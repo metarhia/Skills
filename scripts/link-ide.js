@@ -3,6 +3,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const readline = require('node:readline');
 
 const IDE_TARGETS = {
   cursor: ['.cursor/skills', '.agents/skills'],
@@ -11,20 +12,16 @@ const IDE_TARGETS = {
   github: ['.github/skills'],
 };
 
-const getPackageRoot = () => path.resolve(path.dirname(__filename), '..');
-
-const getProjectRoot = () => process.cwd();
-
-const getSkillFolders = (skillsPath) =>
-  fs
-    .readdirSync(skillsPath, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => e.name)
-    .sort();
+const getSkillFolders = (skillsPath) => {
+  const entries = fs.readdirSync(skillsPath, { withFileTypes: true });
+  const dirs = entries.filter((e) => e.isDirectory());
+  const names = dirs.map((e) => e.name);
+  return names.sort();
+};
 
 const ensureSkillLinks = (projectRoot, skillsSource, skillNames, targetDir) => {
   const messages = [];
-  let anyCreated = false;
+  let created = false;
   const parentPath = path.join(projectRoot, targetDir);
 
   if (!fs.existsSync(parentPath)) {
@@ -56,41 +53,29 @@ const ensureSkillLinks = (projectRoot, skillsSource, skillNames, targetDir) => {
       }
       messages.push(`${targetDir}/${name} exists and is not a symlink; skip`);
       continue;
-    } catch (err) {
-      if (err.code !== 'ENOENT') throw err;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
     }
 
     const relativeTarget = path.relative(path.dirname(linkPath), sourcePath);
     fs.symlinkSync(relativeTarget, linkPath, 'dir');
-    const linkMsg =
-      'Linked ' +
-      targetDir +
-      '/' +
-      name +
-      ' -> ' +
-      'metarhia-skills/skills/' +
-      name;
+    const skillSuffix = 'metarhia-skills/skills/' + name;
+    const linkMsg = `Linked ${targetDir}/${name} -> ${skillSuffix}`;
     messages.push(linkMsg);
-    anyCreated = true;
+    created = true;
   }
+  let message = messages.join('\n');
+  if (!message) message = 'No new links under ' + targetDir;
 
-  return {
-    created: anyCreated,
-    message:
-      messages.length > 0
-        ? messages.join('\n')
-        : `No new links under ${targetDir}`,
-  };
+  return { created, message };
 };
 
 const main = () => {
-  const packageRoot = getPackageRoot();
+  const packageRoot = path.resolve(path.dirname(__filename), '..');
   const skillsPath = path.join(packageRoot, 'skills');
 
   if (!fs.existsSync(skillsPath) || !fs.statSync(skillsPath).isDirectory()) {
-    const msg =
-      'metarhia-skills: no "skills" directory in package. ' +
-      'Run from project that has metarhia-skills installed.';
+    const msg = 'metarhia-skills: no "skills" directory in package.';
     console.error(msg);
     process.exit(1);
   }
@@ -98,42 +83,62 @@ const main = () => {
   const ide = (process.argv[2] || process.env.LINK_IDE || '').toLowerCase();
   const ideNames = Object.keys(IDE_TARGETS);
 
-  if (!ide) {
-    console.error('Usage: npx metarhia-skills <ide>');
-    console.error('  ide: ' + ideNames.join(' | ') + ' | all');
-    console.error('Example: npx metarhia-skills cursor');
-    process.exit(1);
-  }
+  const doRunLink = (selected) => {
+    const projectRoot = process.cwd();
+    const skillNames = getSkillFolders(skillsPath);
+    const dirsToLink =
+      selected === 'all'
+        ? ideNames.flatMap((name) => IDE_TARGETS[name])
+        : IDE_TARGETS[selected];
 
-  const projectRoot = getProjectRoot();
-  const skillNames = getSkillFolders(skillsPath);
-  const dirsToLink =
-    ide === 'all'
-      ? ideNames.flatMap((name) => IDE_TARGETS[name])
-      : IDE_TARGETS[ide];
-
-  if (!dirsToLink) {
-    console.error('Unknown ide: ' + ide);
-    console.error('  ide: ' + ideNames.join(' | ') + ' | all');
-    process.exit(1);
-  }
-
-  const uniqueDirs = [...new Set(dirsToLink)];
-
-  for (const targetDir of uniqueDirs) {
-    try {
-      const result = ensureSkillLinks(
-        projectRoot,
-        skillsPath,
-        skillNames,
-        targetDir,
-      );
-      console.log(result.message);
-    } catch (err) {
-      console.error(`Failed to link ${targetDir}:`, err.message);
+    if (!dirsToLink) {
+      console.error('Unknown ide: ' + selected);
       process.exit(1);
     }
-  }
+
+    const uniqueDirs = [...new Set(dirsToLink)];
+
+    for (const targetDir of uniqueDirs) {
+      try {
+        const result = ensureSkillLinks(
+          projectRoot,
+          skillsPath,
+          skillNames,
+          targetDir,
+        );
+        console.log(result.message);
+      } catch (error) {
+        console.error(`Failed to link ${targetDir}:`, error.message);
+        process.exit(1);
+      }
+    }
+  };
+
+  if (ide) return void doRunLink(ide);
+
+  const menu = ideNames.map((name, i) => `${i + 1}) ${name}`).join(' ');
+  const allIdx = ideNames.length + 1;
+  console.log('\nSelect IDE: ' + menu + ' ' + allIdx + ') all\n');
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  rl.question('> ', (answer) => {
+    rl.close();
+    const n = parseInt(answer, 10);
+    if (n >= 1 && n <= allIdx) {
+      const selected = n === allIdx ? 'all' : ideNames[n - 1];
+      doRunLink(selected);
+    } else {
+      console.error('Invalid choice');
+      process.exit(1);
+    }
+  });
 };
 
-main();
+if (require.main === module) main();
+
+module.exports = {
+  getSkillFolders,
+  ensureSkillLinks,
+};
