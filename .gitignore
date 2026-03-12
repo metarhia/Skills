@@ -3,7 +3,3 @@ node_modules
 *.log
 .skills
 .cursor
-.claude
-.windsurf
-.agents
-.github/skills
