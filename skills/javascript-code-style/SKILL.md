@@ -1,11 +1,22 @@
 ---
 name: javascript-code-style
-description: Apply Metarhia JavaScript style (eslint-config-metarhia). Use when writing or editing .js files and .ts (with certain corrections for typescript) files, formatting code, or when the user asks about code style or linting.
+description: Apply Metarhia JavaScript style. Use when writing or editing .js, .mjs, .ts files (with certain corrections for typescript), formatting code, or when the user asks about code style or linting.
 ---
 
-# JavaScript Code Style (eslint-config-metarhia)
+# JavaScript Code Style
 
-Run `npm run lint` and `npm run fix` before processing with AI. Use these conventions for JavaScript and TypeScript code.
+Use following conventions for JavaScript and TypeScript code.
+
+## Preparations
+
+- Add to dev dependencies in package.json if not added:
+  - eslint-config-metarhia
+  - eslint, prettier
+- Add scripts in package.json if not added:
+  - "lint": "eslint . && prettier --check \"**/*.js\" \"**/*.json\" \"**/*.md\" \"**/*.ts\""
+  - "fix": "eslint . --fix && prettier --write \"**/*.js\" \"**/*.json\" \"**/*.md\" \"**/*.ts\""
+- Before and after code analisys with AI run `npm run lint` and `npm t`
+- Use `npm run fix` if errors/warnings detected to auto-fix when possible
 
 ## Formatting
 
@@ -68,9 +79,3 @@ Run `npm run lint` and `npm run fix` before processing with AI. Use these conven
 - Use `Object.create(null)` for pure dictionaries
 - Use typed arrays for numeric and binary workloads
 - Reduce GC pressure: reuse arrays, objects, and buffers when safe
-
-## Verification
-
-- Run `npm run lint` before committing
-- Run `npm run fix` to auto-fix when possible
-- Run `npm t` to run tests and detect runtime bugs
