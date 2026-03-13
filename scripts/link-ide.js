@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
+const { execSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline');
@@ -20,27 +21,22 @@ const detectTargetDirs = () => {
   const found = [];
   for (const base of Object.values(IDE_TARGETS)) {
     const basePath = path.join(PROJECT_DIR, base);
-    if (fs.existsSync(basePath)) found.push(base + '/skills');
+    if (!fs.existsSync(basePath)) continue;
+    if (base === '.github') {
+      const skillsPath = path.join(basePath, 'skills');
+      if (!fs.existsSync(skillsPath)) continue;
+    }
+    found.push(base + '/skills');
   }
   return found;
 };
 
-const getSkillFolders = () => {
-  const entries = fs.readdirSync(SKILLS_PATH, { withFileTypes: true });
-  const dirs = entries.filter((e) => e.isDirectory());
-  const names = dirs.map((e) => e.name);
-  return names.sort();
-};
-
-const ensureSkillLinks = (skillNames, targetDir, dirs = {}) => {
+const ensureSkillLinks = (targetDir, dirs = {}) => {
   const { root = PROJECT_DIR, source = SKILLS_PATH } = dirs;
-  const messages = [];
-  let created = false;
   const parentPath = path.join(root, targetDir);
 
   if (!fs.existsSync(parentPath)) {
     fs.mkdirSync(parentPath, { recursive: true });
-    messages.push(`Created ${targetDir}`);
   } else {
     const stat = fs.lstatSync(parentPath);
     if (stat.isSymbolicLink()) {
@@ -49,49 +45,59 @@ const ensureSkillLinks = (skillNames, targetDir, dirs = {}) => {
         message: `${targetDir} is a symlink; remove it to use skill links`,
       };
     }
-    const entries = fs.readdirSync(parentPath, { withFileTypes: true });
-    for (const entry of entries) {
-      if (!entry.isSymbolicLink()) continue;
-      const linkPath = path.join(parentPath, entry.name);
+  }
+
+  const linkPath = path.join(parentPath, 'metaskills');
+  try {
+    const stat = fs.lstatSync(linkPath);
+    if (stat.isSymbolicLink()) {
       const resolved = path.resolve(parentPath, fs.readlinkSync(linkPath));
-      if (resolved.startsWith(source) && !fs.existsSync(resolved)) {
-        fs.unlinkSync(linkPath);
-        messages.push(`Removed stale link ${targetDir}/${entry.name}`);
+      if (resolved === path.resolve(source)) {
+        return { created: false, message: 'Already linked ' + targetDir };
       }
     }
+    return {
+      created: false,
+      message: `${targetDir}/metaskills exists and is not a symlink; skip`,
+    };
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
   }
 
-  for (const name of skillNames) {
-    const sourcePath = path.join(source, name);
-    if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isDirectory()) {
-      continue;
-    }
+  const relativeTarget = path.relative(parentPath, source);
+  fs.symlinkSync(relativeTarget, linkPath, 'dir');
+  return {
+    created: true,
+    message: `Linked ${targetDir}/metaskills -> metaskills/skills`,
+  };
+};
 
-    const linkPath = path.join(parentPath, name);
-    try {
-      const stat = fs.lstatSync(linkPath);
-      if (stat.isSymbolicLink()) {
-        const target = fs.readlinkSync(linkPath);
-        const resolved = path.resolve(path.dirname(linkPath), target);
-        if (resolved === path.resolve(sourcePath)) continue;
-      }
-      messages.push(`${targetDir}/${name} exists and is not a symlink; skip`);
-      continue;
-    } catch (error) {
-      if (error.code !== 'ENOENT') throw error;
-    }
+const addToIgnoreFile = (filePath, entry) => {
+  if (!fs.existsSync(filePath)) return;
+  const content = fs.readFileSync(filePath, 'utf8');
+  const lines = content.split('\n');
+  if (lines.includes(entry)) return;
+  const sep = content.endsWith('\n') ? '' : '\n';
+  const updated = content + sep + entry + '\n';
+  fs.writeFileSync(filePath, updated);
+};
 
-    const relativeTarget = path.relative(path.dirname(linkPath), sourcePath);
-    fs.symlinkSync(relativeTarget, linkPath, 'dir');
-    const skillSuffix = 'metaskills/skills/' + name;
-    const linkMsg = `Linked ${targetDir}/${name} -> ${skillSuffix}`;
-    messages.push(linkMsg);
-    created = true;
-  }
-  let message = messages.join('\n');
-  if (!message) message = 'No new links under ' + targetDir;
+const ensureIgnored = () => {
+  const entry = '*/skills/metaskills';
+  addToIgnoreFile(path.join(PROJECT_DIR, '.gitignore'), entry);
+  addToIgnoreFile(path.join(PROJECT_DIR, '.npmignore'), entry);
+};
 
-  return { created, message };
+const ensureInstalled = () => {
+  const pkgPath = path.join(PROJECT_DIR, 'package.json');
+  if (!fs.existsSync(pkgPath)) return;
+  const localPkg = path.join(PROJECT_DIR, 'node_modules', 'metaskills');
+  if (fs.existsSync(localPkg)) return;
+  console.log('Installing metaskills as dev dependency...');
+  execSync('npm install metaskills --save-dev', {
+    cwd: PROJECT_DIR,
+    stdio: 'inherit',
+  });
 };
 
 const main = () => {
@@ -101,11 +107,23 @@ const main = () => {
     process.exit(1);
   }
 
+  ensureInstalled();
+  ensureIgnored();
+
   const ide = (process.argv[2] || process.env.LINK_IDE || '').toLowerCase();
   const ideNames = Object.keys(IDE_TARGETS);
 
+  const runLink = (targetDir) => {
+    try {
+      const result = ensureSkillLinks(targetDir);
+      console.log(result.message);
+    } catch (error) {
+      console.error(`Failed to link ${targetDir}:`, error.message);
+      process.exit(1);
+    }
+  };
+
   const doRunLink = (selected) => {
-    const skillNames = getSkillFolders();
     const toTarget = (base) => base + '/skills';
     const dirsToLink = [];
     if (selected === 'all') {
@@ -119,31 +137,14 @@ const main = () => {
       process.exit(1);
     }
 
-    for (const targetDir of dirsToLink) {
-      try {
-        const result = ensureSkillLinks(skillNames, targetDir);
-        console.log(result.message);
-      } catch (error) {
-        console.error(`Failed to link ${targetDir}:`, error.message);
-        process.exit(1);
-      }
-    }
+    for (const targetDir of dirsToLink) runLink(targetDir);
   };
 
   if (ide) return void doRunLink(ide);
 
   const detectedDirs = detectTargetDirs();
   if (detectedDirs.length > 0) {
-    const skillNames = getSkillFolders();
-    for (const targetDir of detectedDirs) {
-      try {
-        const result = ensureSkillLinks(skillNames, targetDir);
-        console.log(result.message);
-      } catch (error) {
-        console.error(`Failed to link ${targetDir}:`, error.message);
-        process.exit(1);
-      }
-    }
+    for (const targetDir of detectedDirs) runLink(targetDir);
     return;
   }
 
@@ -169,7 +170,4 @@ const main = () => {
 
 if (require.main === module) main();
 
-module.exports = {
-  getSkillFolders,
-  ensureSkillLinks,
-};
+module.exports = { ensureSkillLinks };
