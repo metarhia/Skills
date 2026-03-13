@@ -8,38 +8,31 @@
 
 Agent skills for the [Metarhia](https://github.com/metarhia) tech stack: reusable instructions for AI assistants and IDEs (Cursor, WS Code, Claude Code, Windsurf, etc.) — code style, patterns, architecture, and domain knowledge.
 
-## Installation
-
-Add to any Metarhia, JavaScript, TypeScript (or Node.js) project:
-
-```bash
-npm install metaskills --save-dev
-```
-
 ## Usage
 
 From your project root, link skills into your IDE so it can use them:
 
 ```bash
-npx skills cursor
+npx metaskills
 ```
 
-Run `npx skills` without an IDE to show an interactive menu.
-
-This creates symlinks under the IDE's skills directory pointing at `node_modules/metaskills/skills`, so the IDE loads the skills without copying files.
+This autodetects installed IDEs and creates symlinks under their skills
+directories pointing at `node_modules/metaskills/skills`, so the IDE loads
+the skills without copying files.
 
 **Supported IDEs:**
 
-| IDE        | Command               | Target dir         |
-| ---------- | --------------------- | ------------------ |
-| Autodetect | `npx skills`          | Autodetect or menu |
-| Cursor     | `npx skills cursor`   | `.cursor/skills`   |
-| Claude     | `npx skills claude`   | `.claude/skills`   |
-| Windsurf   | `npx skills windsurf` | `.windsurf/skills` |
-| VS Code    | `npx skills vscode`   | `.github/skills`   |
-| All        | `npx skills all`      | All of the above   |
+| IDE        | Command                   | Target dir         |
+| ---------- | ------------------------- | ------------------ |
+| Autodetect | `npx metaskills`          | Autodetect or menu |
+| Cursor     | `npx metaskills cursor`   | `.cursor/skills`   |
+| Claude     | `npx metaskills claude`   | `.claude/skills`   |
+| Windsurf   | `npx metaskills windsurf` | `.windsurf/skills` |
+| VS Code    | `npx metaskills vscode`   | `.github/skills`   |
+| All        | `npx metaskills all`      | All of the above   |
 
-Run once after install or after updating the package. Stale symlinks are removed and missing ones are added automatically.
+Run once after install or after updating the package. Stale symlinks are
+removed and missing ones are added automatically.
 
 ## Skills
 
@@ -60,7 +53,7 @@ Clone the repo and link skills for local testing:
 git clone https://github.com/metarhia/metaskills.git
 cd Skills
 npm install
-npx skills   # interactive menu, or npx skills cursor, etc.
+npx metaskills   # autodetect, or npx metaskills cursor, etc.
 ```
 
 Scripts:

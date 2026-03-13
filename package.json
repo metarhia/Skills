@@ -1,6 +1,6 @@
 {
   "name": "metaskills",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Timur Shemsedinov <timur.shemsedinov@gmail.com>",
   "description": "Metarhia Skills",
   "license": "MIT",
@@ -33,7 +33,7 @@
   },
   "homepage": "https://github.com/metarhia/metaskills",
   "bin": {
-    "skills": "scripts/link-ide.js"
+    "metaskills": "scripts/link-ide.js"
   },
   "files": [
     "skills",
