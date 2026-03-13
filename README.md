@@ -1,10 +1,10 @@
 # Metarhia Skills
 
-[![ci status](https://github.com/metarhia/Skills/workflows/Testing%20CI/badge.svg)](https://github.com/metarhia/Skills/actions?query=workflow%3A%22Testing+CI%22+branch%3Amain)
+[![ci status](https://github.com/metarhia/metaskills/workflows/Testing%20CI/badge.svg)](https://github.com/metarhia/metaskills/actions?query=workflow%3A%22Testing+CI%22+branch%3Amain)
 [![snyk](https://snyk.io/test/github/metarhia/Skills/badge.svg)](https://snyk.io/test/github/metarhia/Skills)
-[![npm version](https://badge.fury.io/js/Skills.svg)](https://badge.fury.io/js/Skills)
-[![npm downloads/month](https://img.shields.io/npm/dm/Skills.svg)](https://www.npmjs.com/package/Skills)
-[![npm downloads](https://img.shields.io/npm/dt/Skills.svg)](https://www.npmjs.com/package/Skills)
+[![npm version](https://badge.fury.io/js/metaskills.svg)](https://badge.fury.io/js/metaskills)
+[![npm downloads/month](https://img.shields.io/npm/dm/metaskills.svg)](https://www.npmjs.com/package/metaskills)
+[![npm downloads](https://img.shields.io/npm/dt/metaskills.svg)](https://www.npmjs.com/package/metaskills)
 
 Agent skills for the [Metarhia](https://github.com/metarhia) tech stack: reusable instructions for AI assistants and IDEs (Cursor, WS Code, Claude Code, Windsurf, etc.) — code style, patterns, architecture, and domain knowledge.
 
@@ -13,7 +13,7 @@ Agent skills for the [Metarhia](https://github.com/metarhia) tech stack: reusabl
 Add to any Metarhia, JavaScript, TypeScript (or Node.js) project:
 
 ```bash
-npm install metarhia-skills --save-dev
+npm install metaskills --save-dev
 ```
 
 ## Usage
@@ -26,19 +26,20 @@ npx skills cursor
 
 Run `npx skills` without an IDE to show an interactive menu.
 
-This creates symlinks under `.cursor/skills` and `.agents/skills` pointing at `node_modules/metarhia-skills/skills`, so the IDE loads the skills without copying files.
+This creates symlinks under the IDE's skills directory pointing at `node_modules/metaskills/skills`, so the IDE loads the skills without copying files.
 
 **Supported IDEs:**
 
-| IDE      | Command               | Target dirs                        |
-| -------- | --------------------- | ---------------------------------- |
-| Cursor   | `npx skills cursor`   | `.cursor/skills`, `.agents/skills` |
-| Claude   | `npx skills claude`   | `.claude/skills`                   |
-| Windsurf | `npx skills windsurf` | `.windsurf/skills`                 |
-| GitHub   | `npx skills github`   | `.github/skills`                   |
-| All      | `npx skills all`      | All of the above                   |
+| IDE        | Command               | Target dir         |
+| ---------- | --------------------- | ------------------ |
+| Autodetect | `npx skills`          | Autodetect or menu |
+| Cursor     | `npx skills cursor`   | `.cursor/skills`   |
+| Claude     | `npx skills claude`   | `.claude/skills`   |
+| Windsurf   | `npx skills windsurf` | `.windsurf/skills` |
+| VS Code    | `npx skills vscode`   | `.github/skills`   |
+| All        | `npx skills all`      | All of the above   |
 
-Run once after install (or after updating the package). Existing symlinks are left as-is; only missing skill links are added.
+Run once after install or after updating the package. Stale symlinks are removed and missing ones are added automatically.
 
 ## Skills
 
@@ -56,7 +57,7 @@ See the [skills](skills/) directory for the full list.
 Clone the repo and link skills for local testing:
 
 ```bash
-git clone https://github.com/metarhia/Skills.git
+git clone https://github.com/metarhia/metaskills.git
 cd Skills
 npm install
 npx skills   # interactive menu, or npx skills cursor, etc.
@@ -70,6 +71,6 @@ Scripts:
 
 ## License & Contributors
 
-Copyright (c) 2026 [Metarhia contributors](https://github.com/metarhia/Skills/graphs/contributors).
-Metarhia Skills is [MIT licensed](./LICENSE).
-Metarhia Skills is a part of [Metarhia](https://github.com/metarhia) technology stack.
+Copyright (c) 2026 [Metarhia contributors](https://github.com/metarhia/metaskills/graphs/contributors).
+Metaskills is [MIT licensed](./LICENSE).
+Metaskills is a part of [Metarhia](https://github.com/metarhia) technology stack.

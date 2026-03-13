@@ -1,5 +1,5 @@
 {
-  "name": "metarhia-skills",
+  "name": "metaskills",
   "version": "1.0.0",
   "author": "Timur Shemsedinov <timur.shemsedinov@gmail.com>",
   "description": "Metarhia Skills",
@@ -26,12 +26,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/metarhia/Skills"
+    "url": "https://github.com/metarhia/metaskills"
   },
   "bugs": {
-    "url": "https://github.com/metarhia/Skills/issues"
+    "url": "https://github.com/metarhia/metaskills/issues"
   },
-  "homepage": "https://github.com/metarhia/Skills",
+  "homepage": "https://github.com/metarhia/metaskills",
   "bin": {
     "skills": "scripts/link-ide.js"
   },
