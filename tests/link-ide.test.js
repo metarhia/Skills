@@ -16,8 +16,7 @@ test('package root has scripts/ and package.json', () => {
 });
 
 test('getSkillFolders returns sorted array of directory names', () => {
-  const skillsPath = path.join(packageRoot, 'skills');
-  const names = getSkillFolders(skillsPath);
+  const names = getSkillFolders();
   assert.ok(Array.isArray(names));
   assert.ok(names.length > 0);
   const sorted = [...names].sort();
@@ -26,7 +25,7 @@ test('getSkillFolders returns sorted array of directory names', () => {
 });
 
 test('ensureSkillLinks creates symlinks for skill folders', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'metarhia-skills-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'metaskills-'));
   try {
     const skillsPath = path.join(tmp, 'skills');
     const skillName = 'sample-skill';
@@ -34,7 +33,8 @@ test('ensureSkillLinks creates symlinks for skill folders', () => {
     fs.mkdirSync(skillPath, { recursive: true });
 
     const targetDir = '.cursor/skills';
-    const result = ensureSkillLinks(tmp, skillsPath, [skillName], targetDir);
+    const overrides = { root: tmp, source: skillsPath };
+    const result = ensureSkillLinks([skillName], targetDir, overrides);
 
     assert.ok(result.created);
     const linkPath = path.join(tmp, targetDir, skillName);
@@ -49,7 +49,7 @@ test('ensureSkillLinks creates symlinks for skill folders', () => {
 });
 
 test('ensureSkillLinks skips existing correct symlink', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'metarhia-skills-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'metaskills-'));
   try {
     const skillsPath = path.join(tmp, 'skills');
     const skillName = 'sample-skill';
@@ -57,8 +57,9 @@ test('ensureSkillLinks skips existing correct symlink', () => {
     fs.mkdirSync(skillPath, { recursive: true });
 
     const targetDir = '.cursor/skills';
-    ensureSkillLinks(tmp, skillsPath, [skillName], targetDir);
-    const result = ensureSkillLinks(tmp, skillsPath, [skillName], targetDir);
+    const overrides = { root: tmp, source: skillsPath };
+    ensureSkillLinks([skillName], targetDir, overrides);
+    const result = ensureSkillLinks([skillName], targetDir, overrides);
 
     assert.ok(!result.created);
     assert.ok(result.message.includes('No new links'));
