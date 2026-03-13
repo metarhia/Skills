@@ -5,24 +5,38 @@ const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline');
 
+const PROJECT_DIR = process.cwd();
+const PACKAGE_DIR = path.resolve(path.dirname(__filename), '..');
+const SKILLS_PATH = path.join(PACKAGE_DIR, 'skills');
+
 const IDE_TARGETS = {
-  cursor: ['.cursor/skills', '.agents/skills'],
-  claude: ['.claude/skills'],
-  windsurf: ['.windsurf/skills'],
-  github: ['.github/skills'],
+  cursor: '.cursor',
+  claude: '.claude',
+  windsurf: '.windsurf',
+  vscode: '.github',
 };
 
-const getSkillFolders = (skillsPath) => {
-  const entries = fs.readdirSync(skillsPath, { withFileTypes: true });
+const detectTargetDirs = () => {
+  const found = [];
+  for (const base of Object.values(IDE_TARGETS)) {
+    const basePath = path.join(PROJECT_DIR, base);
+    if (fs.existsSync(basePath)) found.push(base + '/skills');
+  }
+  return found;
+};
+
+const getSkillFolders = () => {
+  const entries = fs.readdirSync(SKILLS_PATH, { withFileTypes: true });
   const dirs = entries.filter((e) => e.isDirectory());
   const names = dirs.map((e) => e.name);
   return names.sort();
 };
 
-const ensureSkillLinks = (projectRoot, skillsSource, skillNames, targetDir) => {
+const ensureSkillLinks = (skillNames, targetDir, dirs = {}) => {
+  const { root = PROJECT_DIR, source = SKILLS_PATH } = dirs;
   const messages = [];
   let created = false;
-  const parentPath = path.join(projectRoot, targetDir);
+  const parentPath = path.join(root, targetDir);
 
   if (!fs.existsSync(parentPath)) {
     fs.mkdirSync(parentPath, { recursive: true });
@@ -35,10 +49,20 @@ const ensureSkillLinks = (projectRoot, skillsSource, skillNames, targetDir) => {
         message: `${targetDir} is a symlink; remove it to use skill links`,
       };
     }
+    const entries = fs.readdirSync(parentPath, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isSymbolicLink()) continue;
+      const linkPath = path.join(parentPath, entry.name);
+      const resolved = path.resolve(parentPath, fs.readlinkSync(linkPath));
+      if (resolved.startsWith(source) && !fs.existsSync(resolved)) {
+        fs.unlinkSync(linkPath);
+        messages.push(`Removed stale link ${targetDir}/${entry.name}`);
+      }
+    }
   }
 
   for (const name of skillNames) {
-    const sourcePath = path.join(skillsSource, name);
+    const sourcePath = path.join(source, name);
     if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isDirectory()) {
       continue;
     }
@@ -59,7 +83,7 @@ const ensureSkillLinks = (projectRoot, skillsSource, skillNames, targetDir) => {
 
     const relativeTarget = path.relative(path.dirname(linkPath), sourcePath);
     fs.symlinkSync(relativeTarget, linkPath, 'dir');
-    const skillSuffix = 'metarhia-skills/skills/' + name;
+    const skillSuffix = 'metaskills/skills/' + name;
     const linkMsg = `Linked ${targetDir}/${name} -> ${skillSuffix}`;
     messages.push(linkMsg);
     created = true;
@@ -71,11 +95,8 @@ const ensureSkillLinks = (projectRoot, skillsSource, skillNames, targetDir) => {
 };
 
 const main = () => {
-  const packageRoot = path.resolve(path.dirname(__filename), '..');
-  const skillsPath = path.join(packageRoot, 'skills');
-
-  if (!fs.existsSync(skillsPath) || !fs.statSync(skillsPath).isDirectory()) {
-    const msg = 'metarhia-skills: no "skills" directory in package.';
+  if (!fs.existsSync(SKILLS_PATH)) {
+    const msg = 'metaskills: no "skills" directory in package.';
     console.error(msg);
     process.exit(1);
   }
@@ -84,28 +105,23 @@ const main = () => {
   const ideNames = Object.keys(IDE_TARGETS);
 
   const doRunLink = (selected) => {
-    const projectRoot = process.cwd();
-    const skillNames = getSkillFolders(skillsPath);
-    const dirsToLink =
-      selected === 'all'
-        ? ideNames.flatMap((name) => IDE_TARGETS[name])
-        : IDE_TARGETS[selected];
+    const skillNames = getSkillFolders();
+    const toTarget = (base) => base + '/skills';
+    const dirsToLink = [];
+    if (selected === 'all') {
+      dirsToLink.push(...Object.values(IDE_TARGETS).map(toTarget));
+    } else if (IDE_TARGETS[selected]) {
+      dirsToLink.push(toTarget(IDE_TARGETS[selected]));
+    }
 
-    if (!dirsToLink) {
+    if (dirsToLink.length === 0) {
       console.error('Unknown ide: ' + selected);
       process.exit(1);
     }
 
-    const uniqueDirs = [...new Set(dirsToLink)];
-
-    for (const targetDir of uniqueDirs) {
+    for (const targetDir of dirsToLink) {
       try {
-        const result = ensureSkillLinks(
-          projectRoot,
-          skillsPath,
-          skillNames,
-          targetDir,
-        );
+        const result = ensureSkillLinks(skillNames, targetDir);
         console.log(result.message);
       } catch (error) {
         console.error(`Failed to link ${targetDir}:`, error.message);
@@ -115,6 +131,21 @@ const main = () => {
   };
 
   if (ide) return void doRunLink(ide);
+
+  const detectedDirs = detectTargetDirs();
+  if (detectedDirs.length > 0) {
+    const skillNames = getSkillFolders();
+    for (const targetDir of detectedDirs) {
+      try {
+        const result = ensureSkillLinks(skillNames, targetDir);
+        console.log(result.message);
+      } catch (error) {
+        console.error(`Failed to link ${targetDir}:`, error.message);
+        process.exit(1);
+      }
+    }
+    return;
+  }
 
   const menu = ideNames.map((name, i) => `${i + 1}) ${name}`).join(' ');
   const allIdx = ideNames.length + 1;
