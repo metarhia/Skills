@@ -1,5 +1,5 @@
 ---
-name: javascript-code-style
+name: js-conventions
 description: Apply Metarhia JavaScript style. Use when writing or editing .js, .mjs, .ts files (with certain corrections for typescript), formatting code, or when the user asks about code style or linting.
 ---
 
@@ -15,7 +15,7 @@ Use following conventions for JavaScript and TypeScript code.
 - Add scripts in package.json if not added:
   - "lint": "eslint . && prettier --check \"**/\*.js\" \"**/_.json\" \"\*\*/_.md\" \"\*_/_.ts\""
   - "fix": "eslint . --fix && prettier --write \"**/\*.js\" \"**/_.json\" \"\*\*/_.md\" \"\*_/_.ts\""
-- Before and after code analisys with AI run `npm run lint` and `npm t`
+- Before and after code analysis with AI run `npm run lint` and `npm t`
 - Use `npm run fix` if errors/warnings detected to auto-fix when possible
 
 ## Formatting
@@ -38,13 +38,13 @@ Use following conventions for JavaScript and TypeScript code.
 - Use boolean prefixes: `is`, `has`, `can`, `should`
 - Use singular names for entities and plural names for collections
 - Use verb names for functions and handlers (`parse`, `create`, `handle`, `on`)
-- Include units in numeric names (`timeoutMs`, `sizeBytes`)
+- Include units in numeric names (`timeoutMs`, `sizeBytes`) except options
 
 ## Best practices
 
 - Prefer `const`, minimize `let`, never use `var`
 - Prefer arrow functions (except prototype/class methods)
-- Do not mutate input parameters
+- Do not mutate input parameters; avoid `arguments`
 - Keep functions small and single-purpose
 - Decompose long expressions into intermediate variables
 - Prefer explicit loops (`for`, `for..of`) in hot paths
@@ -55,13 +55,12 @@ Use following conventions for JavaScript and TypeScript code.
 - Self-documented and self-descriptive code: do not add
   obvious comments, code should be clear without comments
 - Use iteration methods like `.map`, `.filter`, `.reduce` if it is good for code semantic
-- Try to avoid `.forEach` except case when passed callback
-  do not read something from outer context
+- Try to avoid `.forEach` if callback operates with outer context
 
 ## Optimizations
 
 - Keep object shapes stable: same keys, types, and key order
-- Change shape only in constructors and creational patterns; avoid mix-ins and `delete`
+- Change shape only in constructors and creational patterns; avoid mix-ins
 - Use shape mutations only for metaprogramming
 - Use `null` for empty reference types; use `undefined` for empty primitives
 - Avoid array destructuring in assignments and loops; object destructuring is ok
@@ -69,13 +68,14 @@ Use following conventions for JavaScript and TypeScript code.
 - Avoid reading the same property from many unrelated object shapes
 - Prefer string or number literals for status/codes; avoid mixing primitives with objects in one variable
 - Keep objects that share a property to the same shape; avoid polymorphic hotspots
-- Prefer fixed property access (`obj.x`) over dynamic keys (`obj[key]`) in hot paths
+- Prefer fixed property access (`obj.x`) over dynamic keys (`obj[key]`)
 - Keep arrays dense, avoid holes and mixed element kinds
 - Initialize object fields in constructor/factory once and in one order
-- Set field to `null` or `undefined` instead of `delete` in hot paths
-- Move reusable callbacks outside hot loops
-- Keep `try/catch`, spread/rest, and `arguments` away from hot loops
+- Set field to `null` or `undefined`; avoid `delete`
+- Move reusable callbacks outside loops
+- Keep `try/catch`, spread/rest away from hot loops
 - Use `Map` for dynamic key dictionaries, plain objects for fixed schemas
+- Use `Set` for big and dynamic collections, prefer arrays for short and stable
 - Use `Object.create(null)` for pure dictionaries
 - Use typed arrays for numeric and binary workloads
 - Reduce GC pressure: reuse arrays, objects, and buffers when safe
