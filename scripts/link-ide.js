@@ -7,8 +7,7 @@ const path = require('node:path');
 const readline = require('node:readline');
 
 const PROJECT_DIR = process.cwd();
-const PACKAGE_DIR = path.resolve(path.dirname(__filename), '..');
-const SKILLS_PATH = path.join(PACKAGE_DIR, 'skills');
+const SKILLS_DIR = path.join(PROJECT_DIR, 'node_modules/metaskills/skills');
 
 const IDE_TARGETS = {
   cursor: '.cursor',
@@ -32,7 +31,7 @@ const detectTargetDirs = () => {
 };
 
 const ensureSkillLinks = (targetDir, dirs = {}) => {
-  const { root = PROJECT_DIR, source = SKILLS_PATH } = dirs;
+  const { root = PROJECT_DIR, source = SKILLS_DIR } = dirs;
   const parentPath = path.join(root, targetDir);
 
   if (!fs.existsSync(parentPath)) {
@@ -101,21 +100,21 @@ const ensureInstalled = () => {
 };
 
 const main = () => {
-  if (!fs.existsSync(SKILLS_PATH)) {
-    const msg = 'metaskills: no "skills" directory in package.';
-    console.error(msg);
-    process.exit(1);
-  }
-
   ensureInstalled();
   ensureIgnored();
+
+  if (!fs.existsSync(SKILLS_DIR)) {
+    console.error('metaskills: node_modules/metaskills/skills not found.');
+    process.exit(1);
+  }
+  const source = SKILLS_DIR;
 
   const ide = (process.argv[2] || process.env.LINK_IDE || '').toLowerCase();
   const ideNames = Object.keys(IDE_TARGETS);
 
   const runLink = (targetDir) => {
     try {
-      const result = ensureSkillLinks(targetDir);
+      const result = ensureSkillLinks(targetDir, { source });
       console.log(result.message);
     } catch (error) {
       console.error(`Failed to link ${targetDir}:`, error.message);
