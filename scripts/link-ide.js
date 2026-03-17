@@ -14,6 +14,8 @@ const IDE_TARGETS = {
   claude: '.claude',
   windsurf: '.windsurf',
   vscode: '.github',
+  gemini: '.gemini',
+  antigravity: '.agents',
 };
 
 const detectTargetDirs = () => {
@@ -21,7 +23,7 @@ const detectTargetDirs = () => {
   for (const base of Object.values(IDE_TARGETS)) {
     const basePath = path.join(PROJECT_DIR, base);
     if (!fs.existsSync(basePath)) continue;
-    if (base === '.github') {
+    if (base === '.github' || base === '.agents') {
       const skillsPath = path.join(basePath, 'skills');
       if (!fs.existsSync(skillsPath)) continue;
     }
@@ -149,7 +151,7 @@ const main = () => {
 
   const menu = ideNames.map((name, i) => `${i + 1}) ${name}`).join(' ');
   const allIdx = ideNames.length + 1;
-  console.log('\nSelect IDE: ' + menu + ' ' + allIdx + ') all\n');
+  console.log('\nSelect IDE or AI Agent: ' + menu + ' ' + allIdx + ') all\n');
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
