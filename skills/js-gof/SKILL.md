@@ -28,7 +28,8 @@ Refs: https://github.com/HowProgrammingWorks/AbstractFactory
 ```javascript
 const dataAccess = {
   fs: {
-    createDatabase: (...args) => new FileStorage(...args),createCursor: (...args) => new FileLineCursor(...args),
+    createDatabase: (...args) => new FileStorage(...args),
+    createCursor: (...args) => new FileLineCursor(...args),
   },
   minio: {
     // factories collection for minio
@@ -295,7 +296,9 @@ function Singleton() {
 ```javascript
 const Singleton = new (function () {
   const single = this;
-  return function () { return single; };
+  return function () {
+    return single;
+  };
 })();
 ```
 
@@ -322,7 +325,10 @@ const singleton = (() => {
 ```
 
 ```javascript
-const singleton = ((instance) => () => instance)({});
+const singleton = (
+  (instance) => () =>
+    instance
+)({});
 ```
 
 ### Object Pool
