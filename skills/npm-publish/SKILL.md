@@ -180,3 +180,11 @@ Then list remaining manual steps:
 4. `npm publish` (or `npm publish --tag <label>` for prereleases)
 
 Do NOT run `npm publish` or `git push` automatically — always let the user do it or explicitly confirm.
+
+## Step 9: Reinstall Dependencies
+
+After all steps run to refresh package-lock.json:
+
+```bash
+npm i
+```
