@@ -6,7 +6,7 @@
 [![npm downloads/month](https://img.shields.io/npm/dm/metaskills.svg)](https://www.npmjs.com/package/metaskills)
 [![npm downloads](https://img.shields.io/npm/dt/metaskills.svg)](https://www.npmjs.com/package/metaskills)
 
-Agent skills for the [Metarhia](https://github.com/metarhia) tech stack: reusable instructions for AI assistants and IDEs (Cursor, WS Code, Claude Code, Windsurf, etc.) — code style, patterns, architecture, and domain knowledge.
+Agent skills for the [Metarhia](https://github.com/metarhia) tech stack: reusable instructions for AI assistants and IDEs (Cursor, VS Code, Claude Code, Windsurf, etc.) — code style, patterns, architecture, and domain knowledge.
 
 ## Usage
 
