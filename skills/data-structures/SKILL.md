@@ -1,216 +1,505 @@
 ---
 name: data-structures
-description: Operate metautil data structures — ConsList, Struct, Queue, Stack, Deque, List, Trie, UnrolledList, CircularBuffer. Use when choosing, implementing, or refactoring with these classes, or when contrasting them with Array/Object.
+description: Implements custom JavaScript data structures: queues, deques, stacks, linked lists, cons lists, circular buffers, unrolled lists, tries, heaps, graphs, LRU caches, CRDTs, pools, structs. Use when building or choosing non-native collections, optimizing enqueue/dequeue, designing persistent lists, or when the user asks for data structures beyond Map/Set/Array/Object.
 ---
 
-# Data Structures (metautil)
+# Custom Data Structures (JavaScript)
 
-Import from the package root. Prefer these ADTs over ad-hoc `Array`/`Object` when the discipline (FIFO, LIFO, persistence, schema) matters.
+## Complexity and code characteristics
 
-```js
-const metautil = require('metautil');
-const { ConsList, cons, uncons, Struct, Deque, Queue, Stack } = metautil;
-const { List, ListNode, CircularBuffer, UnrolledList, Trie } = metautil;
-```
+Choose a structure for the property you need to control — not only for speed.
 
-## Choose the right structure
+**Big-O (typical; n = size, k = key/word length):**
+- Singly-linked push/pop at head: O(1); search / index: O(n)
+- Doubly-linked append/prepend / splice at known node: O(1); index: O(n) (nearer-end walk helps)
+- Cons `prepend` / `uncons`: O(1); `reverse` / `map` / random access: O(n); tails share structure
+- CircularBuffer / Queue / Deque / Stack ends: amortized O(1); grow rare O(n); never hot `Array.shift`
+- UnrolledList enqueue/dequeue: amortized O(1); better locality than per-item nodes; pool cuts allocs
+- BST insert/search: O(log n) balanced, O(n) skewed; in-order: O(n)
+- Binary heap push/pop: O(log n); peek: O(1)
+- Trie insert/has: O(k); autocomplete: O(matches × k)
+- Adjacency-list addEdge: O(1); BFS/DFS: O(V + E)
+- LRU (Map) get/set/evict: O(1); G-Counter inc O(1), merge O(replicas); Pool capture O(1) amortized
+- Prefer the structure whose hot operation is O(1) or O(log n); measure before optimizing rare paths
 
-- FIFO jobs / BFS / sliding failure window → `Queue` (avoid `Array.shift` in a hot loop)
-- LIFO undo / nested layers / brackets → `Stack` (avoid Array that also gets `shift`/`splice`)
-- Both ends O(1), capped window → `Deque` or `CircularBuffer` (avoid `unshift`/`shift` on Array)
-- Index + mid-sequence edit/move/group → `List` (avoid repeated `splice` + index bookkeeping)
-- Immutable history / branching / sharing → `ConsList` (avoid `[...arr]` / `{...obj}` per version)
-- Typed sealed/frozen records → `Struct` (avoid plain literals with drifting shape)
-- Prefix autocomplete / string keys → `Trie` (avoid nested objects hand-rolled)
-- Extreme enqueue/dequeue volume only → `UnrolledList` (avoid `Queue` when you need peek/interop)
-- Random access on a ring → `CircularBuffer.at` (avoid wrapping Deque for index)
+**Readability and semantics:**
+- Name by role: `pending` (Queue), `frontier` (Deque), `undo` (Stack) — not `buffer1`
+- Type states intent: ring/unrolled = throughput; cons = persistent; heap = priority; trie = prefix
+- Small public API (`enqueue`/`dequeue`) — do not expose nodes or buffers
 
-Prefer dedicated ADTs over Array because:
+**Stability and contracts:**
+- Return copies or iterators; document live vs snapshot and iteration order
+- Cap growth (capacity, pool size, LRU max); unbounded queues/caches are operability bugs
+- Immutable Cons/Struct: updates are new values (`prepend`, `fork`); mutable lists document aliasing
 
-- Ends are O(1) amortized (`Queue`/`Deque`/`Stack`/`CircularBuffer`); `Array.shift`/`unshift` is O(n)
-- The type names the contract — reviewers and AI need fewer words
-- `ConsList` shares tails; copy-on-write Array history is O(n) per edit
-- `Struct` validates types and freezes/seals shape; typos throw early
+**Testability:**
+- Assert on contents (`[...q]`, `toArray()`, size), not private fields; keep `Symbol.iterator`
+- Deterministic fixtures; inject clocks/timeouts for Pool waiters
 
-## Complexity and surface
+**Encapsulation and cost:**
+- Hide representation so callers survive swaps (array → ring → unrolled)
+- Amortized grow and node pools trade memory for latency; clear slots on dequeue for GC
+- Power-of-2 ring capacity; index with `& (len - 1)` instead of `%`
 
-- `CircularBuffer` — ends O(1), index O(1) via `at`
-- `Deque` / `Queue` / `Stack` — ends O(1); no index (`at` only on buffer)
-- `UnrolledList` — ends O(1); no peek / interop
-- `List` — ends O(1), index O(n)
-- `ConsList` — `prepend` O(1), walk O(n)
-- `Trie` — string-key prefix map
+## Lists
 
-Who has what (beyond `size` / `isEmpty` where present):
+Singly-linked (push/pop at head):
 
-- `fromArray` / `toArray` / iterator: all except `UnrolledList` (and `Trie`)
-- `peek`: `Queue`, `Stack`
-- `at`: `CircularBuffer` only
-- `every` / `reduce`: `CircularBuffer`, `Deque`, `Stack` (not `Queue`)
-- `clear` / `includes`: ring family + `List` + `Trie.clear`; not `ConsList` / `UnrolledList`
+```javascript
+class LinkedList {
+  #head = null;
+  #length = 0;
 
-## Interoperability
+  push(data) {
+    this.#head = { data, next: this.#head };
+    this.#length++;
+  }
 
-Convert through Array:
+  pop() {
+    if (!this.#head) return undefined;
+    const { data } = this.#head;
+    this.#head = this.#head.next;
+    this.#length--;
+    return data;
+  }
 
-```js
-const list = List.fromArray([1, 2, 3, 4, 5]);
-const queue = Queue.fromArray(list.filter((n) => n % 2 === 0).toArray());
-const consList = ConsList.fromArray(queue.toArray());
-```
-
-`Deque`, `Queue`, and `Stack` are thin facades over `CircularBuffer` (same ring storage).
-
-## Struct
-
-Schema is inferred from default literals. Immutable → `Object.freeze`; mutable → `Object.seal`. Class name becomes `constructor.name`. Statics: `fields`, `schema`, `mutable`.
-
-- `undefined` → schema `unknown`, accepts anything
-- `null` → schema `ref`, accepts null, object, function
-- `[]` / `{}` → schema `array` / `object`, accepts arrays / plain objects (**fresh copy per instance**)
-- primitive → schema `typeof`, accepts that primitive
-
-`null` (`ref`) ≠ `{}` (`object`); arrays fail `object` and plain objects fail `array`.
-
-```js
-const Money = Struct.immutable('Money', { currency: 'USD', amountCents: 0 });
-const a = Money.create({ amountCents: 500 });
-const b = a.fork({ amountCents: 700 }); // new frozen record
-// a.update(...) → throws; use fork or branch
-
-const Reading = Struct.mutable('Reading', {
-  deviceId: '',
-  millicelsius: 0,
-  processed: false,
-});
-const r = new Reading({ deviceId: 'sensor-7' });
-r.update({ processed: true }); // in-place, mutable only
-```
-
-- `fork(updates)` — full shallow copy via `toObject()` + updates (independent instance)
-- `branch(updates)` — `Object.create(this)` overlay; cheap sharing of unset fields
-- On a **mutable** branch, `update` only works for fields the branch itself defined
-- Unknown field or wrong type → `TypeError`
-
-## ConsList
-
-Immutable singly-linked cons cells with structural sharing. `prepend` is O(1); never mutate. `ConsList.empty` is a **singleton** (`===`).
-
-```js
-const shared = ConsList.of(3, 4, 5);
-const branch1 = shared.prepend(2).prepend(1); // [1, 2, 3, 4, 5]
-const branch2 = shared.prepend(99); // [99, 3, 4, 5]
-// branch1.tail.tail === shared; branch2.tail === shared
-
-const { value, tail } = branch1.uncons(); // same as uncons(branch1)
-const rebuilt = cons(value, tail); // same as tail.prepend(value)
-
-let history = ConsList.of('draft v1');
-history = history.prepend('draft v2');
-const undone = history.tail; // O(1) restore; suffix still shared
-```
-
-- `merge(...lists)` — join in argument order; shares the **last** list as suffix; O(n) over all but the last
-- `member(value)` — first **shared suffix** whose head `===` value, or `empty` (not a boolean)
-- `equals` / `includes` — element-wise `===`
-- Also: `of` / `fromArray` / `fromIterable`, `map` / `filter` / `find` / `some` / `every`, `reverse`, `toArray`
-- Empty `reduce` without seed → `TypeError`; empty `every` → `true`
-
-## CircularBuffer / Deque / Queue / Stack
-
-Growable power-of-two ring (initial capacity 16, doubles on full). End ops O(1); `CircularBuffer.at(i)` is O(1) (`-1` = last). `clear()` resets capacity to initial.
-
-```js
-const WINDOW = 5;
-const trace = new Deque();
-trace.push(point);
-if (trace.size > WINDOW) trace.shift();
-
-const q = Queue.fromArray(jobs);
-q.enqueue(job);
-const next = q.dequeue(); // undefined if empty
-q.peek();
-
-const undo = new Stack();
-undo.push(command);
-const last = undo.pop();
-undo.peek();
-```
-
-- `CircularBuffer` / `Deque`: `unshift` / `push`, `shift` / `pop`; index only on buffer via `at`
-- `Queue`: `enqueue` / `dequeue` / `peek` (front)
-- `Stack`: `push` / `pop` / `peek` (back)
-- Empty `every` → `true`; empty `reduce` without seed → `TypeError`
-
-## List / ListNode
-
-Mutable doubly-linked sequence. Ends O(1); index ops O(n). Public API is value/index based. Non-integer indexes are no-ops; negatives count from the end.
-
-```js
-const route = List.of(a, b, c);
-route.insert(1, rush);
-route.move(from, to);
-route.rotate(1); // default 1; positive = left
-const { before, after } = route.splitAt(2);
-const byZone = route.groupBy((stop) => stop.zone);
-const removed = route.remove(x, y); // count removed
-route.sum((x) => x.cents);
-```
-
-Mutating vs copying:
-
-- Mutate: `append` / `prepend` / `insert` / `delete` / `drop` / `rotate` / `swap` / `move` / `reverse` / `sort` / `replace` / `clear`
-- Copy: `take` / `slice` / `splitAt` / `map` / `flatMap` / `filter` / `toReversed` / `toSorted` / `clone` / `merge`
-- `take` / `slice` return `null` for empty range, `take(0)`, or bad bounds; `drop` mutates in place
-- `insert` clamps out-of-range indexes; `delete` / `swap` / `move` out-of-range → no-op
-- `reduce(fn, initial)` — **initial is required** (unlike ConsList / CircularBuffer)
-- `avg` on empty → `0`; `min` / `max` on empty → `undefined`
-- Also: `at` / `set`, `indexOf` / `lastIndexOf`, `includes`, `some` / `every` / `find` / `findIndex`
-
-`ListNode` is low-level (`create` / `append` / `prepend` / `unlink` / `seek` / `fromArray` / `copy` / `link`) for custom structures that own head/tail/size. `seek` non-integer → `null`. Do not mutate `prev`/`next` of nodes owned by a `List`.
-
-## UnrolledList
-
-High-throughput FIFO: pooled fixed-size array nodes. Use when volume is high and you only need enqueue/dequeue.
-
-```js
-const pending = new UnrolledList({ nodeSize: 256, poolSize: 4 });
-pending.enqueue(task);
-let task = pending.dequeue();
-while (task !== undefined) {
-  task();
-  task = pending.dequeue();
+  *[Symbol.iterator]() {
+    let node = this.#head;
+    while (node) {
+      yield node.data;
+      node = node.next;
+    }
+  }
 }
 ```
 
-- Defaults: `nodeSize: 1024`, `poolSize: 2`
-- Raise `nodeSize` for larger bursts; raise `poolSize` if drain/refill churns nodes
-- No `peek`, `fromArray`, iterator, or `includes`
-- `enqueue(undefined)` is a real item — empty `dequeue()` is indistinguishable from that value
+Doubly-linked list ideas:
+- `#head` / `#tail` / `#size`; nodes `{ value, prev, next }` (fixed key order)
+- Resolve index from nearer end; splice ranges by relinking, not rebuild
+- Ops worth adding: `append`/`prepend`/`insert`/`delete`, `rotate`, `move`, `slice`/`take`/`drop`, `reverse`, `groupBy` → `Map` of lists
+- `Symbol.iterator`; `toArray` only at boundaries
 
-## Trie
+Immutable cons list ideas:
+- Cell `{ value, next, size }` + singleton empty; `prepend` returns a new cell (share the old list)
+- Build from arrays backwards; merge by prepending earlier lists onto the last
+- Prefer for persistent pipelines; use mutable doubly-linked for mid-list edits
 
-Prefix tree for **string** keys.
+## Circular Buffer
 
-```js
-const trie = new Trie();
-trie.insert('cat');
-trie.insert('car', 42);
-trie.insert('gone', undefined);
-trie.has('gone'); // true — present; get → undefined
-trie.get('car'); // 42
-trie.complete('ca'); // order may vary
-trie.delete('car'); // prunes empty branches
+Growable ring, power-of-2 capacity, bitmask index — backing for Queue / Deque / Stack:
+
+```javascript
+class CircularBuffer {
+  #buffer = new Array(16);
+  #head = 0;
+  #size = 0;
+
+  get size() {
+    return this.#size;
+  }
+
+  #grow() {
+    const cap = this.#buffer.length;
+    const mask = cap - 1;
+    const next = new Array(cap * 2);
+    for (let i = 0; i < this.#size; i++) {
+      next[i] = this.#buffer[(this.#head + i) & mask];
+    }
+    this.#buffer = next;
+    this.#head = 0;
+  }
+
+  push(value) {
+    if (this.#size === this.#buffer.length) this.#grow();
+    const m = this.#buffer.length - 1;
+    this.#buffer[(this.#head + this.#size) & m] = value;
+    this.#size++;
+  }
+
+  unshift(value) {
+    if (this.#size === this.#buffer.length) this.#grow();
+    const m = this.#buffer.length - 1;
+    this.#head = (this.#head - 1) & m;
+    this.#buffer[this.#head] = value;
+    this.#size++;
+  }
+
+  shift() {
+    if (!this.#size) return undefined;
+    const m = this.#buffer.length - 1;
+    const v = this.#buffer[this.#head];
+    this.#buffer[this.#head] = undefined;
+    this.#head = (this.#head + 1) & m;
+    this.#size--;
+    return v;
+  }
+
+  pop() {
+    if (!this.#size) return undefined;
+    const m = this.#buffer.length - 1;
+    const i = (this.#head + this.#size - 1) & m;
+    const v = this.#buffer[i];
+    this.#buffer[i] = undefined;
+    this.#size--;
+    return v;
+  }
+
+  at(index) {
+    const i = index < 0 ? this.#size + index : index;
+    if (i < 0 || i >= this.#size) return undefined;
+    return this.#buffer[(this.#head + i) & (this.#buffer.length - 1)];
+  }
+}
 ```
 
-- Default value is `true` when omitted; re-insert same key does not bump `size`
-- Empty string `''` is a valid key
-- `insert` non-string → `TypeError`; `has` / `get` / `delete` non-string soft-fail (`false` / `undefined` / `false`)
-- Use `has` to distinguish missing from stored `undefined`
+Ideas: clear slots on remove (GC); `fromArray` with capacity `2^k > n`; iterate `(head + i) & mask`.
 
-## Contracts
+## Queue / Deque / Stack
 
-- Empty `pop` / `dequeue` / `shift` → `undefined`
-- Empty `reduce` without seed → `TypeError` (ConsList / CircularBuffer family); List always needs a seed
-- Equality / `includes` / `member` use strict `===` (`NaN` does not match)
-- Prefer structure APIs over inventing Array adapters; convert via `toArray` / `fromArray` when crossing types
+Compose on CircularBuffer — never hot `Array.shift()`:
+
+```javascript
+class Queue {
+  #buf = new CircularBuffer();
+  enqueue(v) {
+    this.#buf.push(v);
+  }
+  dequeue() {
+    return this.#buf.shift();
+  }
+  peek() {
+    return this.#buf.at(0);
+  }
+  get size() {
+    return this.#buf.size;
+  }
+}
+
+class Deque {
+  #buf = new CircularBuffer();
+  push(v) {
+    this.#buf.push(v);
+  }
+  pop() {
+    return this.#buf.pop();
+  }
+  unshift(v) {
+    this.#buf.unshift(v);
+  }
+  shift() {
+    return this.#buf.shift();
+  }
+}
+
+class Stack {
+  #buf = new CircularBuffer();
+  push(v) {
+    this.#buf.push(v);
+  }
+  pop() {
+    return this.#buf.pop();
+  }
+  peek() {
+    return this.#buf.at(-1);
+  }
+}
+```
+
+## Unrolled List
+
+Linked fixed-size buffers + node pool (high-throughput queue):
+
+```javascript
+class UnrolledNode {
+  constructor(size) {
+    this.buffer = new Array(size);
+    this.size = size;
+    this.readIndex = 0;
+    this.writeIndex = 0;
+    this.length = 0;
+    this.next = null;
+  }
+  enqueue(item) {
+    if (this.writeIndex >= this.size) return false;
+    this.buffer[this.writeIndex++] = item;
+    this.length++;
+    return true;
+  }
+  dequeue() {
+    if (!this.length) return undefined;
+    const i = this.readIndex++;
+    const item = this.buffer[i];
+    this.buffer[i] = undefined;
+    this.length--;
+    return item;
+  }
+  reset() {
+    this.readIndex = this.writeIndex = this.length = 0;
+    this.next = null;
+  }
+}
+```
+
+Ideas: pool of N nodes (`acquire`/`release`); enqueue grows a new node when full; dequeue releases empty tail nodes back to the pool; typical `nodeSize` 1024.
+
+## Binary Search Tree
+
+```javascript
+class BinarySearchTree {
+  constructor(data) {
+    this.data = data;
+    this.left = null;
+    this.right = null;
+  }
+
+  insert(data) {
+    if (data < this.data) {
+      if (this.left) this.left.insert(data);
+      else this.left = new BinarySearchTree(data);
+    } else {
+      if (this.right) this.right.insert(data);
+      else this.right = new BinarySearchTree(data);
+    }
+  }
+
+  *inOrder() {
+    if (this.left) yield* this.left.inOrder();
+    yield this.data;
+    if (this.right) yield* this.right.inOrder();
+  }
+}
+```
+
+## Heap / Priority Queue
+
+```javascript
+class MinHeap {
+  #data = [];
+
+  #parent(i) {
+    return (i - 1) >> 1;
+  }
+  #left(i) {
+    return 2 * i + 1;
+  }
+  #right(i) {
+    return 2 * i + 2;
+  }
+  #swap(i, j) {
+    [this.#data[i], this.#data[j]] = [this.#data[j], this.#data[i]];
+  }
+
+  push(value) {
+    this.#data.push(value);
+    let i = this.#data.length - 1;
+    while (i > 0 && this.#data[i] < this.#data[this.#parent(i)]) {
+      this.#swap(i, this.#parent(i));
+      i = this.#parent(i);
+    }
+  }
+
+  pop() {
+    const top = this.#data[0];
+    const last = this.#data.pop();
+    if (this.#data.length === 0) return top;
+    this.#data[0] = last;
+    let i = 0;
+    while (true) {
+      let smallest = i;
+      const l = this.#left(i),
+        r = this.#right(i);
+      if (l < this.#data.length && this.#data[l] < this.#data[smallest]) smallest = l;
+      if (r < this.#data.length && this.#data[r] < this.#data[smallest]) smallest = r;
+      if (smallest === i) break;
+      this.#swap(i, smallest);
+      i = smallest;
+    }
+    return top;
+  }
+
+  get size() {
+    return this.#data.length;
+  }
+}
+```
+
+## LRU Cache
+
+```javascript
+class LRUCache {
+  #capacity;
+  #cache = new Map();
+
+  constructor(capacity) {
+    this.#capacity = capacity;
+  }
+
+  get(key) {
+    if (!this.#cache.has(key)) return undefined;
+    const value = this.#cache.get(key);
+    this.#cache.delete(key);
+    this.#cache.set(key, value);
+    return value;
+  }
+
+  set(key, value) {
+    this.#cache.delete(key);
+    this.#cache.set(key, value);
+    if (this.#cache.size > this.#capacity) {
+      this.#cache.delete(this.#cache.keys().next().value);
+    }
+  }
+}
+```
+
+## Trie (prefix tree)
+
+`Object.create(null)` nodes + `Symbol` terminal (no char-key collisions). Ideas: store values, `#size`, autocomplete, prune empty branches on delete:
+
+```javascript
+const VALUE = Symbol('value');
+
+class Trie {
+  #root = Object.create(null);
+  #size = 0;
+
+  insert(word, value = true) {
+    let node = this.#root;
+    for (const ch of word) node = node[ch] ??= Object.create(null);
+    if (!Object.hasOwn(node, VALUE)) this.#size++;
+    node[VALUE] = value;
+  }
+
+  has(word) {
+    const n = this.#find(word);
+    return n !== null && Object.hasOwn(n, VALUE);
+  }
+
+  complete(prefix) {
+    const node = this.#find(prefix);
+    if (!node) return [];
+    const out = [];
+    (function walk(n, path) {
+      if (Object.hasOwn(n, VALUE)) out.push(path);
+      for (const ch of Object.keys(n)) walk(n[ch], path + ch);
+    })(node, prefix);
+    return out;
+  }
+
+  #find(word) {
+    let node = this.#root;
+    for (const ch of word) {
+      node = node[ch];
+      if (!node) return null;
+    }
+    return node;
+  }
+}
+```
+
+Delete idea: walk path storing parents; remove `VALUE`; walk up deleting children with no `VALUE` and no keys.
+
+## Graph (adjacency list)
+
+```javascript
+class Graph {
+  #adj = new Map();
+
+  addEdge(from, to) {
+    (this.#adj.get(from) ?? this.#adj.set(from, []).get(from)).push(to);
+  }
+
+  *bfs(start) {
+    const visited = new Set([start]);
+    const queue = new Queue();
+    queue.enqueue(start);
+    while (queue.size) {
+      const node = queue.dequeue();
+      yield node;
+      for (const n of this.#adj.get(node) ?? []) {
+        if (!visited.has(n)) {
+          visited.add(n);
+          queue.enqueue(n);
+        }
+      }
+    }
+  }
+}
+```
+
+## Resource Pool
+
+Ideas: parallel `#items` / `#free` arrays; round-robin `#current`; `Lease` with one-shot `release`; `WeakSet` of valid leases; when empty, queue waiters (optional timeout); on release, hand the same slot to the next waiter or mark free.
+
+```javascript
+class Lease {
+  #release;
+  #released = false;
+  constructor(resource, release) {
+    this.resource = resource;
+    this.#release = release;
+  }
+  release() {
+    if (this.#released) throw new Error('already released');
+    this.#released = true;
+    this.#release();
+  }
+}
+```
+
+## Struct (typed record factory)
+
+Ideas: `Struct.immutable` / `Struct.mutable` from defaults; infer field types; `Object.freeze` vs `Object.seal`; `fork` = copy+updates; `branch` = prototype overlay for cheap variants; validate unknown fields / wrong types; deep-copy array/object defaults.
+
+```javascript
+class Struct {
+  static immutable(name, defaults) {
+    const fields = Object.keys(defaults);
+    const Entity = {
+      [name]: class {
+        constructor(data = {}) {
+          for (const k of fields) this[k] = Object.hasOwn(data, k) ? data[k] : defaults[k];
+          Object.freeze(this);
+        }
+        fork(updates = {}) {
+          return new Entity({ ...this, ...updates });
+        }
+      },
+    }[name];
+    return Entity;
+  }
+}
+```
+
+## CRDT (G-Counter)
+
+```javascript
+class GCounter {
+  #id;
+  #counts;
+
+  constructor(id, size) {
+    this.#id = id;
+    this.#counts = new Array(size).fill(0);
+  }
+
+  inc(x = 1) {
+    this.#counts[this.#id] += x;
+  }
+
+  merge(remote) {
+    for (let i = 0; i < this.#counts.length; i++) {
+      this.#counts[i] = Math.max(this.#counts[i], remote[i]);
+    }
+  }
+
+  get value() {
+    return this.#counts.reduce((a, b) => a + b, 0);
+  }
+}
+```
+
+## Conventions
+
+- Prefer CircularBuffer or UnrolledList for Queue/Deque/Stack
+- `Object.create(null)` for trie nodes; Symbol for reserved keys; LRU via Map order; CRDTs for distributed counters
