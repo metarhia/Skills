@@ -22,26 +22,31 @@ the skills without copying files.
 
 **Supported IDEs:**
 
-| IDE        | Command                   | Target dir         |
-| ---------- | ------------------------- | ------------------ |
-| Autodetect | `npx metaskills`          | Autodetect or menu |
-| Cursor     | `npx metaskills cursor`   | `.cursor/skills`   |
-| Claude     | `npx metaskills claude`   | `.claude/skills`   |
-| Windsurf   | `npx metaskills windsurf` | `.windsurf/skills` |
-| VS Code    | `npx metaskills vscode`   | `.github/skills`   |
-| All        | `npx metaskills all`      | All of the above   |
+| IDE         | Command                      | Target dir         |
+| ----------- | ---------------------------- | ------------------ |
+| Autodetect  | `npx metaskills`             | Autodetect or menu |
+| Cursor      | `npx metaskills cursor`      | `.cursor/skills`   |
+| Claude      | `npx metaskills claude`      | `.claude/skills`   |
+| Windsurf    | `npx metaskills windsurf`    | `.windsurf/skills` |
+| VS Code     | `npx metaskills vscode`      | `.github/skills`   |
+| Gemini      | `npx metaskills gemini`      | `.gemini/skills`   |
+| Antigravity | `npx metaskills antigravity` | `.agents/skills`   |
+| All         | `npx metaskills all`         | All of the above   |
 
 Run once after install or after updating the package. Stale symlinks are
 removed and missing ones are added automatically.
 
 ## Skills
 
-Skills live under `skills/<name>/SKILL.md`. They cover:
+Skills live under `skills/<name>/SKILL.md`:
 
-- **Code style**: JavaScript/TypeScript (eslint-config-metarhia), formatting, naming
-- **Patterns**: GoF, GRASP, data access, error handling, security, concurrency, async
-- **Architecture**: OOP, functional, procedural, SOLID, highload, distributed systems
-- **Platform**: Node.js, databases, networking, V8 optimizations, web UI, metarhia stack
+- `js-conventions` — Metarhia JavaScript/TypeScript style and naming
+- `js-data-structures` — JavaScript collections and structural patterns
+- `data-structures` — general data-structure guidance for agents
+- `metautil-data-structures` — metautil structures (list, queue, deque, trie, …)
+- `js-gof` — GoF creational and related patterns in JavaScript
+- `error-handling` — error handling conventions
+- `npm-publish` — prepare an npm package for release
 
 See the [skills](skills/) directory for the full list.
 
@@ -51,7 +56,7 @@ Clone the repo and link skills for local testing:
 
 ```bash
 git clone https://github.com/metarhia/metaskills.git
-cd Skills
+cd metaskills
 npm install
 npx metaskills   # autodetect, or npx metaskills cursor, etc.
 ```
