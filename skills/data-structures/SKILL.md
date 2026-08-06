@@ -10,6 +10,7 @@ description: Implements custom JavaScript data structures: queues, deques, stack
 Choose a structure for the property you need to control — not only for speed.
 
 **Big-O (typical; n = size, k = key/word length):**
+
 - Singly-linked push/pop at head: O(1); search / index: O(n)
 - Doubly-linked append/prepend / splice at known node: O(1); index: O(n) (nearer-end walk helps)
 - Cons `prepend` / `uncons`: O(1); `reverse` / `map` / random access: O(n); tails share structure
@@ -23,20 +24,24 @@ Choose a structure for the property you need to control — not only for speed.
 - Prefer the structure whose hot operation is O(1) or O(log n); measure before optimizing rare paths
 
 **Readability and semantics:**
+
 - Name by role: `pending` (Queue), `frontier` (Deque), `undo` (Stack) — not `buffer1`
 - Type states intent: ring/unrolled = throughput; cons = persistent; heap = priority; trie = prefix
 - Small public API (`enqueue`/`dequeue`) — do not expose nodes or buffers
 
 **Stability and contracts:**
+
 - Return copies or iterators; document live vs snapshot and iteration order
 - Cap growth (capacity, pool size, LRU max); unbounded queues/caches are operability bugs
 - Immutable Cons/Struct: updates are new values (`prepend`, `fork`); mutable lists document aliasing
 
 **Testability:**
+
 - Assert on contents (`[...q]`, `toArray()`, size), not private fields; keep `Symbol.iterator`
 - Deterministic fixtures; inject clocks/timeouts for Pool waiters
 
 **Encapsulation and cost:**
+
 - Hide representation so callers survive swaps (array → ring → unrolled)
 - Amortized grow and node pools trade memory for latency; clear slots on dequeue for GC
 - Power-of-2 ring capacity; index with `& (len - 1)` instead of `%`
@@ -74,12 +79,14 @@ class LinkedList {
 ```
 
 Doubly-linked list ideas:
+
 - `#head` / `#tail` / `#size`; nodes `{ value, prev, next }` (fixed key order)
 - Resolve index from nearer end; splice ranges by relinking, not rebuild
 - Ops worth adding: `append`/`prepend`/`insert`/`delete`, `rotate`, `move`, `slice`/`take`/`drop`, `reverse`, `groupBy` → `Map` of lists
 - `Symbol.iterator`; `toArray` only at boundaries
 
 Immutable cons list ideas:
+
 - Cell `{ value, next, size }` + singleton empty; `prepend` returns a new cell (share the old list)
 - Build from arrays backwards; merge by prepending earlier lists onto the last
 - Prefer for persistent pipelines; use mutable doubly-linked for mid-list edits
@@ -308,8 +315,10 @@ class MinHeap {
       let smallest = i;
       const l = this.#left(i),
         r = this.#right(i);
-      if (l < this.#data.length && this.#data[l] < this.#data[smallest]) smallest = l;
-      if (r < this.#data.length && this.#data[r] < this.#data[smallest]) smallest = r;
+      if (l < this.#data.length && this.#data[l] < this.#data[smallest])
+        smallest = l;
+      if (r < this.#data.length && this.#data[r] < this.#data[smallest])
+        smallest = r;
       if (smallest === i) break;
       this.#swap(i, smallest);
       i = smallest;
@@ -458,7 +467,8 @@ class Struct {
     const Entity = {
       [name]: class {
         constructor(data = {}) {
-          for (const k of fields) this[k] = Object.hasOwn(data, k) ? data[k] : defaults[k];
+          for (const k of fields)
+            this[k] = Object.hasOwn(data, k) ? data[k] : defaults[k];
           Object.freeze(this);
         }
         fork(updates = {}) {

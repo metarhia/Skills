@@ -22,6 +22,7 @@ description: Choose and use native JavaScript collections for Big-O, readability
 Choose a structure for the property you need to control — not only for speed.
 
 **Big-O (typical average case; n = collection size):**
+
 - `Object` field access: O(1) for fixed shapes; dynamic/`delete`-heavy objects degrade toward dictionary mode
 - `Array` index get/set, `push`/`pop`: O(1); `includes`/`indexOf`/`splice`/`shift`/`unshift`: O(n)
 - `Map` get/set/has/delete, `Set` add/has/delete: amortized O(1); iteration: O(n)
@@ -30,30 +31,35 @@ Choose a structure for the property you need to control — not only for speed.
 - Prefer the structure whose hot operation is O(1); measure before optimizing rare paths
 
 **Readability and semantics:**
+
 - Let the type state the intent: `Set` = unique membership; `Map` = keyed registry; `Array` = ordered sequence; plain `Object` = record/DTO
 - Prefer a named collection over encoding the same idea in ad-hoc flags, parallel arrays, or stringly keys
 - Use array methods (`.map`, `.filter`, `.reduce`) when they match the transform; use explicit loops when control flow or performance matters
 - Avoid over-abstracting: a small static `Array` allowlist is clearer than a `Set` used once
 
 **Naming:**
+
 - Plural names for collections (`users`, `sessions`); singular for entities (`user`)
 - Name by role, not by type: `seenIds` (Set), `socketToSession` (Map) — not `set1` / `mapData`
 - Boolean membership reads as `has`/`is`: `if (seen.has(id))`, `blocked.has(user)`
 - Include units in size names (`sizeBytes`, `timeoutMs`) when the collection holds measured quantities
 
 **Stability and contracts:**
+
 - Treat inputs as immutable at API boundaries; copy or freeze when you must share
 - Prefer stable iteration order when callers rely on it (`Map`/`Set`/`Array` insertion order)
 - Keep record shapes and array element kinds stable over time (see per-structure V8 hints)
 - Document whether a returned collection is live (shared) or a snapshot
 
 **Testability:**
+
 - Prefer pure functions over collections: same inputs, same outputs; inject maps/sets as arguments when state is required
 - Favor deterministic structures in tests: plain data over WeakMap (non-enumerable), over insertion-timed WeakRef behavior
 - Assert on observable contents (`[...set]`, `Object.fromEntries(map)`, length/size) rather than private fields
 - Small fixtures: build with literals/`Object.freeze` when the shape should not change under test
 
 **Encapsulation, safety, operability:**
+
 - Hide representation behind a small API (`add`/`has`, getters) so internals can change without call-site churn
 - Use `Object.create(null)` or `Map` for untrusted keys (prototype-pollution safety)
 - Use WeakMap/WeakSet when lifetime must follow the key (leak control)
@@ -73,6 +79,7 @@ dict[key] = value;
 ```
 
 **Hints:**
+
 - Keep a stable shape (hidden class): same keys, types, and key order; init once in a factory/constructor
 - Prefer fixed access (`obj.x`) over dynamic keys (`obj[key]`) when the schema is known
 - Do not `delete` fields; set `null` for refs, `undefined` for primitives
@@ -89,10 +96,13 @@ ids.push(40);
 const last = ids.pop();
 
 const ALLOWED = ['read', 'write'];
-if (ALLOWED.includes(role)) { /* ... */ }
+if (ALLOWED.includes(role)) {
+  /* ... */
+}
 ```
 
 **Hints:**
+
 - Keep arrays dense and monomorphic (one element kind): SMI ints, doubles, or objects — do not mix
 - Prefer SMI-friendly integers (31-bit signed) for indexes/counters (`PACKED_SMI_ELEMENTS`); a float, `NaN`, or hole promotes the whole array
 - Avoid holey arrays (`new Array(n)`, deletes, skips); build with `push` or fill sequentially
@@ -116,6 +126,7 @@ console.log(sessions.size);
 ```
 
 **Hints:**
+
 - Dynamic keys on `Map` avoid dictionary-mode / shape pollution on `{}`
 - Values read on hot paths should still use stable shapes
 - `NaN` is a valid single key; object keys compare by reference
@@ -137,6 +148,7 @@ const unique = [...new Set(items)];
 ```
 
 **Hints:**
+
 - Uniqueness is by reference for objects, not deep value
 - Insertion-order iteration; no index access
 - Array/Set conversion allocates — do it at boundaries, not in hot loops
@@ -156,6 +168,7 @@ const attach = (obj, data) => {
 ```
 
 **Hints:**
+
 - Prefer WeakMap side tables over adding ad-hoc fields to host objects
 - Cannot enumerate — keep a strong list only if you must iterate
 - `WeakRef` / `FinalizationRegistry` are for lifetime hooks, not general storage
@@ -182,6 +195,7 @@ const frame = bytes.subarray(0, 8); // shared memory; `slice` copies
 ```
 
 **Hints:**
+
 - Fixed length — size ahead or allocate larger and copy to grow
 - Prefer typed arrays over `number[]` for tight numeric loops (stable element type)
 - Use `DataView` for wire endianness; multi-byte typed views are platform-endian

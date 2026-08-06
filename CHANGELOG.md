@@ -2,6 +2,12 @@
 
 ## [Unreleased][unreleased]
 
+## [1.0.5][] - 2026-08-06
+
+- Added skills: data-structures, metautil-data-structures
+- Updated js-data-structures skill
+- Fixed scripts code style
+
 ## [1.0.4][] - 2026-03-19
 
 - Added GoF creational patterns
@@ -31,7 +37,8 @@
 - Autodetect IDE dirs and link skills without a menu prompt
 - Prune stale symlinks on re-run after package update
 
-[unreleased]: https://github.com/metarhia/metaskills/compare/v1.0.4...HEAD
+[unreleased]: https://github.com/metarhia/metaskills/compare/v1.0.5...HEAD
+[1.0.5]: https://github.com/metarhia/metaskills/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/metarhia/metaskills/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/metarhia/metaskills/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/metarhia/metaskills/compare/v1.0.1...v1.0.2
