@@ -27,7 +27,7 @@ const detectTargetDirs = () => {
       const skillsPath = path.join(basePath, 'skills');
       if (!fs.existsSync(skillsPath)) continue;
     }
-    found.push(base + '/skills');
+    found.push(`${base}/skills`);
   }
   return found;
 };
@@ -54,7 +54,10 @@ const ensureSkillLinks = (targetDir, dirs = {}) => {
     if (stat.isSymbolicLink()) {
       const resolved = path.resolve(parentPath, fs.readlinkSync(linkPath));
       if (resolved === path.resolve(source)) {
-        return { created: false, message: 'Already linked ' + targetDir };
+        return {
+          created: false,
+          message: `Already linked ${targetDir}`,
+        };
       }
     }
     return {
@@ -79,7 +82,7 @@ const addToIgnoreFile = (filePath, entry) => {
   const lines = content.split('\n');
   if (lines.includes(entry)) return;
   const sep = content.endsWith('\n') ? '' : '\n';
-  const updated = content + sep + entry + '\n';
+  const updated = `${content + sep + entry}\n`;
   fs.writeFileSync(filePath, updated);
 };
 
@@ -125,7 +128,7 @@ const main = () => {
   };
 
   const doRunLink = (selected) => {
-    const toTarget = (base) => base + '/skills';
+    const toTarget = (base) => `${base}/skills`;
     const dirsToLink = [];
     if (selected === 'all') {
       dirsToLink.push(...Object.values(IDE_TARGETS).map(toTarget));
@@ -134,7 +137,7 @@ const main = () => {
     }
 
     if (dirsToLink.length === 0) {
-      console.error('Unknown ide: ' + selected);
+      console.error(`Unknown ide: ${selected}`);
       process.exit(1);
     }
 
@@ -151,7 +154,7 @@ const main = () => {
 
   const menu = ideNames.map((name, i) => `${i + 1}) ${name}`).join(' ');
   const allIdx = ideNames.length + 1;
-  console.log('\nSelect IDE or AI Agent: ' + menu + ' ' + allIdx + ') all\n');
+  console.log(`\nSelect IDE or AI Agent: ${menu} ${allIdx}) all\n`);
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
